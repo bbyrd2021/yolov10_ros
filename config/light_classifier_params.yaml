@@ -1,0 +1,6 @@
+confidence_threshold: 0.5
+detection_topic: /yolov10/detections
+image_topic: /yolov10/image_raw
+output_topic: /perception/traffic_lights
+target_class: "traffic light"
+roi_padding: 5

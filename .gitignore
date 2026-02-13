@@ -1,0 +1,16 @@
+# Model weights (too large for git)
+models/*.pt
+models/*.pth
+models/*.onnx
+models/*.engine
+!models/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# ROS build artifacts
+build/
+devel/
+logs/

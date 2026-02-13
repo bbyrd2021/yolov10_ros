@@ -1,0 +1,17 @@
+<launch>
+  <arg name="weights" default="$(find yolov10_ros)/models/yolov10-bdd-vanilla.pt" />
+  <arg name="confidence_threshold" default="0.5" />
+  <arg name="device" default="0" />
+  <arg name="inference_size" default="640" />
+  <arg name="input_image_topic" default="/camera/color/image_raw" />
+  <arg name="view_image" default="true" />
+
+  <node pkg="yolov10_ros" name="yolov10_detector" type="detector_node.py" output="screen">
+    <param name="weights" value="$(arg weights)" />
+    <param name="confidence_threshold" value="$(arg confidence_threshold)" />
+    <param name="device" value="$(arg device)" />
+    <param name="inference_size" value="$(arg inference_size)" />
+    <param name="input_image_topic" value="$(arg input_image_topic)" />
+    <param name="view_image" value="$(arg view_image)" />
+  </node>
+</launch>

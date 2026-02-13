@@ -1,0 +1,9 @@
+<launch>
+  <!-- Include the full perception pipeline -->
+  <include file="$(find yolov10_ros)/launch/pipeline.launch">
+    <arg name="input_image_topic" value="/camera/color/image_raw" />
+  </include>
+
+  <!-- Launch RealSense D435 camera -->
+  <include file="$(find camera_launch)/launch/d435.launch" />
+</launch>

@@ -1,0 +1,8 @@
+confidence_threshold: 0.5
+inference_size: 640
+half: false
+view_image: false
+publish_annotated: false
+output_topic: /yolov10/detections
+output_image_topic: /yolov10/image_raw
+annotated_image_topic: /yolov10/annotated

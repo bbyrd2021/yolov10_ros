@@ -1,0 +1,42 @@
+<launch>
+  <!-- Common args -->
+  <arg name="device" default="0" />
+  <arg name="input_image_topic" default="/camera/color/image_raw" />
+
+  <!-- Detector -->
+  <arg name="detector_weights" default="$(find yolov10_ros)/models/yolov10-bdd-vanilla.pt" />
+  <arg name="detector_conf" default="0.5" />
+
+  <!-- Light classifier -->
+  <arg name="light_weights" default="$(find yolov10_ros)/models/efficientnet_b0_20260211_195116_light_cls.pth" />
+  <arg name="light_conf" default="0.5" />
+
+  <!-- Sign classifier -->
+  <arg name="sign_weights" default="$(find yolov10_ros)/models/efficientnet_b0_20260202_154542_sign_cls.pth" />
+  <arg name="sign_conf" default="0.5" />
+
+  <!-- Detector node -->
+  <node pkg="yolov10_ros" name="yolov10_detector" type="detector_node.py" output="screen">
+    <rosparam file="$(find yolov10_ros)/config/detector_params.yaml" />
+    <param name="weights" value="$(arg detector_weights)" />
+    <param name="confidence_threshold" value="$(arg detector_conf)" />
+    <param name="device" value="$(arg device)" />
+    <param name="input_image_topic" value="$(arg input_image_topic)" />
+  </node>
+
+  <!-- Light classifier node -->
+  <node pkg="yolov10_ros" name="light_classifier" type="light_classifier_node.py" output="screen">
+    <rosparam file="$(find yolov10_ros)/config/light_classifier_params.yaml" />
+    <param name="weights" value="$(arg light_weights)" />
+    <param name="confidence_threshold" value="$(arg light_conf)" />
+    <param name="device" value="$(arg device)" />
+  </node>
+
+  <!-- Sign classifier node -->
+  <node pkg="yolov10_ros" name="sign_classifier" type="sign_classifier_node.py" output="screen">
+    <rosparam file="$(find yolov10_ros)/config/sign_classifier_params.yaml" />
+    <param name="weights" value="$(arg sign_weights)" />
+    <param name="confidence_threshold" value="$(arg sign_conf)" />
+    <param name="device" value="$(arg device)" />
+  </node>
+</launch>
