@@ -1,0 +1,7 @@
+sign_topic: /perception/traffic_signs
+image_topic: /yolov10/image_raw
+output_topic: /perception/speed_limit
+roi_padding: 10
+min_crop_height: 64
+ocr_confidence_threshold: 0.5
+device: "0"

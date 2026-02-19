@@ -39,4 +39,10 @@
     <param name="confidence_threshold" value="$(arg sign_conf)" />
     <param name="device" value="$(arg device)" />
   </node>
+
+  <!-- Speed limit OCR node -->
+  <node pkg="yolov10_ros" name="speed_limit_ocr" type="speed_limit_ocr_node.py" output="screen">
+    <rosparam file="$(find yolov10_ros)/config/speed_limit_ocr_params.yaml" />
+    <param name="device" value="$(arg device)" />
+  </node>
 </launch>

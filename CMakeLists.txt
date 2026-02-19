@@ -20,6 +20,8 @@ add_message_files(
   ClassifiedLightArray.msg
   ClassifiedSign.msg
   ClassifiedSignArray.msg
+  SpeedLimit.msg
+  SpeedLimitArray.msg
 )
 
 generate_messages(
@@ -40,5 +42,6 @@ catkin_install_python(PROGRAMS
   src/detector_node.py
   src/light_classifier_node.py
   src/sign_classifier_node.py
+  src/speed_limit_ocr_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
