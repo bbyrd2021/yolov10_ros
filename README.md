@@ -1,6 +1,17 @@
 # yolov10_ros
 
-ROS 1 (Noetic) perception pipeline for autonomous driving. Runs a YOLOv10 object detector trained on BDD100K, then classifies detected traffic lights and signs using dedicated EfficientNet B0 classifiers.
+ROS 1 (Noetic) perception pipeline for autonomous driving. Runs a YOLOv10 object detector trained on BDD100K, then classifies detected traffic lights and signs using dedicated EfficientNet B0 classifiers. A downstream EasyOCR node reads speed limit values off sign crops.
+
+## Documentation
+
+| Doc | Contents |
+|-----|----------|
+| [docs/architecture.md](docs/architecture.md) | Node graph, data flow, topic table, latency profile |
+| [docs/models.md](docs/models.md) | Model details, class mappings, loading patterns, file naming |
+| [docs/ros_api.md](docs/ros_api.md) | Full topic/parameter/message reference for all four nodes |
+| [docs/ocr_pipeline.md](docs/ocr_pipeline.md) | Deep dive: CLAHE preprocessing, EasyOCR internals, speed validation |
+| [docs/docker.md](docs/docker.md) | Docker setup on Ubuntu 22.04, KITTI bag playback, troubleshooting |
+| [docs/demo.md](docs/demo.md) | `demo_kitti.py` CLI and Streamlit app usage guide |
 
 ## Architecture
 
@@ -24,12 +35,21 @@ ROS 1 (Noetic) perception pipeline for autonomous driving. Runs a YOLOv10 object
 |  node    | |  node    |
 +----+-----+ +----+-----+
      |            |
-     v            v
-/perception/   /perception/
-traffic_lights traffic_signs
+     v            | /perception/traffic_signs
+/perception/      |
+traffic_lights    v
+           +----------------+
+           | speed_limit    |
+           | ocr_node       |
+           | (EasyOCR)      |
+           +-------+--------+
+                   |
+                   v
+           /perception/speed_limit
+           (SpeedLimitArray)
 ```
 
-The detector publishes bounding boxes and the source frame. Each classifier subscribes to both via a time-synchronized callback, filters for its target class, crops the ROI, runs classification, and publishes enriched results.
+The detector publishes bounding boxes and the source frame. Each classifier subscribes to both via a time-synchronized callback, filters for its target class, crops the ROI, runs classification, and publishes enriched results. The OCR node reads numeric values off speed limit sign crops.
 
 ## Models
 
