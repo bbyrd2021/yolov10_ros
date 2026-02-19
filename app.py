@@ -7,6 +7,7 @@ Usage:
     streamlit run app.py
 """
 
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -166,9 +167,25 @@ if uploaded:
 
         cap.release()
         writer.release()
+
+        # Re-encode to H.264 so browsers can play it
+        progress.progress(1.0, text="Re-encoding to H.264…")
+        h264_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        h264_path = h264_file.name
+        h264_file.close()
+
+        import imageio_ffmpeg
+        ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+        subprocess.run(
+            [ffmpeg_bin, "-y", "-i", out_path,
+             "-vcodec", "libx264", "-crf", "23", "-preset", "fast",
+             "-movflags", "+faststart", h264_path],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
+        )
+
         progress.empty()
         status.success("Done!")
 
-        st.video(out_path)
-        with open(out_path, "rb") as f:
+        st.video(h264_path)
+        with open(h264_path, "rb") as f:
             st.download_button("Download annotated video", f, file_name="annotated_output.mp4", mime="video/mp4")
