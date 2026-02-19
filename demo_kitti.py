@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """
-Standalone KITTI demo — no ROS required.
+Standalone perception demo — no ROS required.
 
 Runs the full perception pipeline (YOLOv10 detector + EfficientNet classifiers
-+ EasyOCR speed limit reader) on a KITTI image sequence and writes an
-annotated output video.
++ EasyOCR speed limit reader) on either a KITTI image sequence folder or a
+video file (mp4, avi, etc.), and writes an annotated output video.
 
-Usage:
-    python3 demo_kitti.py --sequence /path/to/kitti/image_02/data/ \
-                          --output output.mp4 \
-                          --device 0
+Usage — KITTI image sequence:
+    python3 demo_kitti.py --input /path/to/kitti/image_02/data/ --output output.mp4
 
-The --sequence directory should contain a flat set of PNG/JPG frames,
-as downloaded from the KITTI raw data benchmark (image_02 = left color camera).
+Usage — video file:
+    python3 demo_kitti.py --input /path/to/video.mp4 --output output_annotated.mp4
 """
 
 import argparse
@@ -133,18 +131,75 @@ def parse_speed(ocr_results, conf_threshold=0.3):
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
+def _open_source(input_path, limit):
+    """Open either a video file or image sequence folder.
+
+    Yields (frame_index, frame_label, bgr_image) and returns
+    (total_frames, native_fps).  Call this as a context manager via the
+    returned generator — the VideoCapture is released when the generator
+    is exhausted or garbage-collected.
+    """
+    p = Path(input_path)
+
+    if p.is_file():
+        cap = cv2.VideoCapture(str(p))
+        if not cap.isOpened():
+            print("ERROR: Cannot open video file:", p)
+            sys.exit(1)
+        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        native_fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        if limit:
+            total = min(total, limit)
+
+        def _gen():
+            idx = 0
+            while idx < total:
+                ok, frame = cap.read()
+                if not ok:
+                    break
+                yield idx, f"frame_{idx:06d}", frame
+                idx += 1
+            cap.release()
+
+        return _gen(), total, native_fps
+
+    elif p.is_dir():
+        image_files = sorted(
+            f for f in p.iterdir()
+            if f.suffix.lower() in {".png", ".jpg", ".jpeg"}
+        )
+        if not image_files:
+            print("ERROR: No images found in", p)
+            sys.exit(1)
+        if limit:
+            image_files = image_files[:limit]
+        total = len(image_files)
+
+        def _gen():
+            for idx, fp in enumerate(image_files):
+                frame = cv2.imread(str(fp))
+                if frame is not None:
+                    yield idx, fp.name, frame
+
+        return _gen(), total, None  # no native FPS for image sequences
+
+    else:
+        print("ERROR: --input must be a video file or image sequence directory:", p)
+        sys.exit(1)
+
+
 def main():
-    parser = argparse.ArgumentParser(description="KITTI perception demo")
-    parser.add_argument("--sequence", required=True,
-                        help="Path to KITTI image sequence folder (image_02/data/)")
+    parser = argparse.ArgumentParser(description="Perception pipeline demo")
+    parser.add_argument("--input", required=True,
+                        help="Video file (mp4/avi/...) or KITTI image sequence folder")
     parser.add_argument("--output", default="output.mp4",
                         help="Output video path")
     parser.add_argument("--device", default="0",
                         help="CUDA device index or 'cpu'")
     parser.add_argument("--conf", type=float, default=0.3,
                         help="Detector confidence threshold")
-    parser.add_argument("--fps", type=float, default=25.0,
-                        help="Output video FPS (default 25 plays KITTI at ~2.5x speed)")
+    parser.add_argument("--fps", type=float, default=0,
+                        help="Output FPS (0 = use source FPS for video, 25 for image sequences)")
     parser.add_argument("--limit", type=int, default=0,
                         help="Max frames to process (0 = all)")
     args = parser.parse_args()
@@ -154,18 +209,12 @@ def main():
     )
     print("Device:", device)
 
-    # Collect frames
-    seq_path = Path(args.sequence)
-    frames = sorted(
-        p for p in seq_path.iterdir()
-        if p.suffix.lower() in {".png", ".jpg", ".jpeg"}
-    )
-    if not frames:
-        print("ERROR: No images found in", seq_path)
-        sys.exit(1)
-    if args.limit:
-        frames = frames[:args.limit]
-    print(f"Found {len(frames)} frames")
+    frame_gen, total_frames, native_fps = _open_source(args.input, args.limit)
+
+    # Resolve output FPS: explicit arg > native video FPS > 25 fallback
+    out_fps = args.fps if args.fps > 0 else (native_fps if native_fps else 25.0)
+    source_type = "video" if Path(args.input).is_file() else "image sequence"
+    print(f"Input: {args.input} ({source_type}, {total_frames} frames, output {out_fps:.1f} fps)")
 
     # Load detector
     print("Loading YOLOv10 detector...")
@@ -195,18 +244,16 @@ def main():
     reader = easyocr.Reader(['en'], gpu=args.device.isdigit(), verbose=False)
     print("  EasyOCR ready")
 
-    # Video writer — use first frame for dimensions
-    sample = cv2.imread(str(frames[0]))
-    h, w = sample.shape[:2]
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(args.output, fourcc, args.fps, (w, h))
+    # Video writer — dimensions determined from first frame
+    writer = None
 
-    print(f"\nProcessing {len(frames)} frames -> {args.output}\n")
+    print(f"\nProcessing {total_frames} frames -> {args.output}\n")
 
-    for i, frame_path in enumerate(frames):
-        image = cv2.imread(str(frame_path))
-        if image is None:
-            continue
+    for i, label, image in frame_gen:
+        if writer is None:
+            h, w = image.shape[:2]
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            writer = cv2.VideoWriter(args.output, fourcc, out_fps, (w, h))
         annotated = image.copy()
 
         # ── Detector ──
@@ -281,15 +328,16 @@ def main():
                 draw_label(annotated, label, x1, y1, x2, y2, _COLOR_DETECTION)
 
         # Frame counter overlay
-        cv2.putText(annotated, f"frame {i+1}/{len(frames)}",
+        cv2.putText(annotated, f"frame {i+1}/{total_frames}",
                     (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
         writer.write(annotated)
 
         summary = ", ".join(frame_summary) if frame_summary else "no detections"
-        print(f"  [{i+1:04d}/{len(frames)}] {frame_path.name}: {summary}")
+        print(f"  [{i+1:04d}/{total_frames}] {label}: {summary}")
 
-    writer.release()
+    if writer:
+        writer.release()
     print(f"\nDone. Output written to: {args.output}")
 
 
