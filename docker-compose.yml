@@ -1,0 +1,36 @@
+services:
+  perception:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DISPLAY=${DISPLAY:-:0}
+    volumes:
+      # Package source (live-mounted so edits take effect on rebuild)
+      - ./yolov10_ros:/catkin_ws/src/yolov10_ros
+      # Model weights (shared with host)
+      - ./models:/catkin_ws/src/yolov10_ros/models
+      # KITTI bag — update this path to your local bag file
+      - ./data:/data
+      # X11 forwarding for rviz/cv2 windows (optional)
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    network_mode: host
+    command: >
+      roslaunch yolov10_ros pipeline_kitti.launch
+
+  # Bag player — run separately after perception is up:
+  #   docker compose run bagplayer
+  bagplayer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    network_mode: host
+    volumes:
+      - ./data:/data
+    command: >
+      bash -c "source /opt/ros/noetic/setup.bash &&
+               rosbag play /data/kitti.bag --clock -r 0.5"
+    profiles:
+      - playback
