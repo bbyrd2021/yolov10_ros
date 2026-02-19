@@ -143,8 +143,8 @@ def main():
                         help="CUDA device index or 'cpu'")
     parser.add_argument("--conf", type=float, default=0.3,
                         help="Detector confidence threshold")
-    parser.add_argument("--fps", type=float, default=10.0,
-                        help="Output video FPS (KITTI is ~10 fps)")
+    parser.add_argument("--fps", type=float, default=25.0,
+                        help="Output video FPS (default 25 plays KITTI at ~2.5x speed)")
     parser.add_argument("--limit", type=int, default=0,
                         help="Max frames to process (0 = all)")
     args = parser.parse_args()
