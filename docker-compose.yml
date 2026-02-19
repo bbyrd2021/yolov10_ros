@@ -1,36 +1,85 @@
+# docker-compose.yml
+# -------------------
+# Compose file for running the AutoDrive perception stack in Docker.
+#
+# Two services are defined:
+#
+#   perception  — Builds the yolov10_ros package and launches the full pipeline.
+#                 Runs automatically with `docker compose up`.
+#
+#   bagplayer   — Plays back a KITTI rosbag at half speed for offline testing.
+#                 Only starts when explicitly requested:
+#                     docker compose run bagplayer
+#                 (uses profiles: [playback] to avoid starting with `up`)
+#
+# Prerequisites:
+#   1. NVIDIA Container Toolkit installed on the host:
+#      https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+#   2. A KITTI rosbag at ./data/kitti.bag (or update the path in bagplayer).
+#   3. Model weights in ./models/ (symlinked into the container).
+#
+# Usage:
+#   # Start perception pipeline:
+#   docker compose up --build
+#
+#   # In a second terminal, play the bag:
+#   docker compose run bagplayer
+#
+#   # Monitor topics:
+#   docker exec -it <container_id> bash -c \
+#     "source /catkin_ws/devel/setup.bash && rostopic echo /perception/speed_limit"
+
 services:
+
+  # ── Perception pipeline ───────────────────────────────────────────────────
   perception:
     build:
-      context: .
+      context: .            # Build context is the yolov10_ros/ directory
       dockerfile: Dockerfile
+    # Use NVIDIA runtime for GPU access inside the container.
+    # Requires nvidia-container-toolkit on the host.
     runtime: nvidia
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - DISPLAY=${DISPLAY:-:0}
+      - NVIDIA_VISIBLE_DEVICES=all   # Expose all GPUs to the container
+      - DISPLAY=${DISPLAY:-:0}       # Forward display for cv2.imshow (if needed)
     volumes:
-      # Package source (live-mounted so edits take effect on rebuild)
+      # Live-mount the package source so Python edits take effect on the next
+      # build without rebuilding the Docker image.
       - ./yolov10_ros:/catkin_ws/src/yolov10_ros
-      # Model weights (shared with host)
+      # Mount model weights from the host (avoids baking large .pt/.pth files
+      # into the image layer).
       - ./models:/catkin_ws/src/yolov10_ros/models
-      # KITTI bag — update this path to your local bag file
+      # Data directory for KITTI bags and output videos.
       - ./data:/data
-      # X11 forwarding for rviz/cv2 windows (optional)
+      # X11 socket for GUI windows (rviz, cv2.imshow).  Optional — comment out
+      # if running headless.
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    # Use host networking so ROS topics are visible from the host machine
+    # and from other containers (roscore, rviz, rqt, etc.).
     network_mode: host
+    # Default command: launch the KITTI pipeline.
+    # Override at runtime: docker compose up -d; docker exec ... roslaunch ...
     command: >
       roslaunch yolov10_ros pipeline_kitti.launch
 
-  # Bag player — run separately after perception is up:
+  # ── Bag player (manual start only) ────────────────────────────────────────
+  # Run this service after the perception pipeline is up to feed it KITTI data.
+  #
   #   docker compose run bagplayer
+  #
+  # Plays at 0.5× speed (-r 0.5) so slower hardware can keep up with inference.
+  # --clock publishes a /clock topic so ROS time aligns with bag time.
   bagplayer:
     build:
       context: .
       dockerfile: Dockerfile
     network_mode: host
     volumes:
-      - ./data:/data
+      - ./data:/data   # Must contain kitti.bag (update path below if needed)
     command: >
       bash -c "source /opt/ros/noetic/setup.bash &&
                rosbag play /data/kitti.bag --clock -r 0.5"
+    # profiles: [playback] means this service is IGNORED by `docker compose up`
+    # and must be started explicitly with `docker compose run bagplayer`.
     profiles:
       - playback

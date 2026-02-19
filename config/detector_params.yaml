@@ -1,8 +1,39 @@
+# detector_params.yaml
+# ---------------------
+# Default ROS parameters for the YOLOv10 detector node (detector_node.py).
+#
+# These values are loaded via <rosparam> in pipeline.launch and can be
+# overridden at launch time:
+#   roslaunch yolov10_ros pipeline.launch detector_conf:=0.4
+#
+# Weights path is intentionally NOT set here; it is passed via the
+# <param name="weights"> tag in the launch file so it can be resolved with
+# $(find yolov10_ros)/models/ relative to the package.
+
+# Minimum detector confidence to include a bounding box in the output.
+# Lower values increase recall (more detections) at the cost of more
+# false positives that downstream classifiers must filter.
 confidence_threshold: 0.5
+
+# Input image resolution fed to the YOLOv10 model (square, pixels).
+# Must be a multiple of 32.  640 is the standard training resolution for
+# BDD100K; reducing to 416 speeds up inference at a small accuracy cost.
 inference_size: 640
+
+# FP16 inference mode (Tensor Cores on Ampere GPUs).  Set to true for
+# ~2× throughput improvement on RTX 30xx / 40xx.  Has no effect on CPU.
 half: false
+
+# Open a cv2.imshow() window with annotated detections (useful on the car's
+# display during field tests).  Leave false in headless / Docker deployments.
 view_image: false
+
+# Publish an annotated image to annotated_image_topic for rviz / rqt_image_view.
+# Slightly increases CPU usage due to the extra draw pass.
 publish_annotated: false
-output_topic: /yolov10/detections
-output_image_topic: /yolov10/image_raw
-annotated_image_topic: /yolov10/annotated
+
+# Topic names — usually left at defaults; override only if integrating into
+# a larger ROS graph with conflicting topic names.
+output_topic:          /yolov10/detections   # DetectionArray for classifiers
+output_image_topic:    /yolov10/image_raw    # Decoded frame for ROI cropping
+annotated_image_topic: /yolov10/annotated    # Debug annotated image (optional)

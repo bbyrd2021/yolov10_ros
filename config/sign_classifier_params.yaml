@@ -1,6 +1,34 @@
+# sign_classifier_params.yaml
+# ----------------------------
+# Default ROS parameters for the traffic sign classifier node
+# (sign_classifier_node.py).
+#
+# Weights path is set in pipeline.launch via <param name="weights">.
+# All values here can be overridden at launch time or via rosparam set.
+
+# Minimum EfficientNet B0 softmax confidence to publish a ClassifiedSign.
+# The model produces a 15-class probability distribution; only the maximum
+# class probability is compared against this threshold.
 confidence_threshold: 0.5
+
+# Topic from which to receive bounding boxes (DetectionArray published by
+# the detector node).
 detection_topic: /yolov10/detections
+
+# Topic from which to receive the decoded source image for ROI cropping.
+# Must match output_image_topic in detector_params.yaml.
 image_topic: /yolov10/image_raw
+
+# Topic on which to publish ClassifiedSignArray results.
+# The SpeedLimitOCRNode subscribes to this topic to find speed_limit signs.
 output_topic: /perception/traffic_signs
+
+# Detector class name to filter for.  Only Detection messages whose
+# class_name matches this string are passed to the classifier.
+# Must match the BDD100K class name exactly (case-sensitive).
 target_class: "traffic sign"
+
+# Pixels added symmetrically around each bounding box before cropping.
+# Signs with decorative borders (stop, yield) benefit from slight padding
+# to capture the full sign shape.
 roi_padding: 5

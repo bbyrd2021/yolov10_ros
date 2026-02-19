@@ -1,7 +1,39 @@
+# speed_limit_ocr_params.yaml
+# ----------------------------
+# Default ROS parameters for the speed limit OCR node
+# (speed_limit_ocr_node.py).
+#
+# This node subscribes to the sign classifier output and reads the numeric
+# speed value off each speed_limit crop using EasyOCR.
+
+# Topic from which to receive sign classifications (ClassifiedSignArray).
+# Must match the output_topic in sign_classifier_params.yaml.
 sign_topic: /perception/traffic_signs
+
+# Topic from which to receive the decoded source image for ROI cropping.
+# Must match output_image_topic in detector_params.yaml.
 image_topic: /yolov10/image_raw
+
+# Topic on which to publish SpeedLimitArray results for the autonomy stack.
 output_topic: /perception/speed_limit
+
+# Extra pixels added around the sign bounding box before cropping.
+# Wider than the classifier default (5) because EasyOCR benefits from
+# seeing the red border of the sign as a spatial context anchor.
 roi_padding: 10
+
+# Minimum crop height in pixels.  Crops shorter than this value are upscaled
+# with bicubic interpolation before OCR.  EasyOCR text recognition accuracy
+# degrades significantly below ~50 px character height; 64 px provides a
+# comfortable margin.
 min_crop_height: 64
+
+# Minimum EasyOCR word confidence to accept a reading.
+# EasyOCR returns per-word confidence in [0, 1].  Values below this threshold
+# are discarded before the speed whitelist validation step.
 ocr_confidence_threshold: 0.5
+
+# CUDA device index ("0", "1", ...) or "cpu".
+# Controls the gpu= flag passed to easyocr.Reader().
+# A digit string → GPU; anything else → CPU.
 device: "0"
