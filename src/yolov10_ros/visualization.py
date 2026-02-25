@@ -12,36 +12,35 @@ mutated; this is important when multiple nodes need the same source image.
 import cv2
 import numpy as np
 
-# ── Color palette (BGR) ───────────────────────────────────────────────────────
-# A fixed pool of visually distinct colors.  Class names are hashed to indices
-# so each class always gets the same color across frames.
-_COLORS = [
-    (0,   255,   0),    # bright green
-    (255,   0,   0),    # blue
-    (0,     0, 255),    # red
-    (255, 255,   0),    # cyan
-    (0,   255, 255),    # yellow
-    (255,   0, 255),    # magenta
-    (128, 255,   0),    # lime-green
-    (255, 128,   0),    # sky-blue
-    (0,   128, 255),    # orange
-    (128,   0, 255),    # purple
-]
+# ── Per-class color palette (BGR) ─────────────────────────────────────────────
+# Intentional per-class colors for the 10 BDD100K classes.
+# Used by draw_detections() and imported by perception_viz_node.py so both
+# the detector-only view and the combined pipeline view stay consistent.
+CLASS_COLORS = {
+    'pedestrian':    (  0, 255, 255),   # yellow
+    'rider':         (  0, 165, 255),   # orange
+    'car':           (255, 255,   0),   # cyan
+    'truck':         (255, 100,   0),   # azure blue
+    'bus':           (128,   0, 255),   # purple
+    'train':         (  0, 128, 128),   # teal
+    'motorcycle':    (  0,  69, 255),   # orange-red
+    'bicycle':       (  0, 200, 100),   # spring green
+    'traffic light': (  0, 255,   0),   # bright green
+    'traffic sign':  (255, 200,   0),   # sky blue
+}
+_FALLBACK_COLOR = (200, 200, 200)       # grey for any unlisted class
 
 
 def _get_color(class_name):
-    """Return a deterministic BGR color for a given class name.
-
-    Uses Python's built-in ``hash()`` for a fast, stable mapping that does not
-    require a lookup table to be populated at startup.
+    """Return a BGR color for a given class name.
 
     Args:
         class_name: String class label (e.g. "car", "traffic light").
 
     Returns:
-        (B, G, R) tuple of uint8 values from _COLORS.
+        (B, G, R) tuple of uint8 values.
     """
-    return _COLORS[hash(class_name) % len(_COLORS)]
+    return CLASS_COLORS.get(class_name, _FALLBACK_COLOR)
 
 
 def draw_detections(image, detections):

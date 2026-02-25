@@ -195,7 +195,9 @@ class YOLOv10Detector:
 
         # Republish the source image so light/sign/OCR nodes can crop from it
         # without needing their own camera subscriber.
-        self.image_pub.publish(cv2_to_imgmsg(im0))
+        img_msg = cv2_to_imgmsg(im0)
+        img_msg.header = msg.header  # preserve original camera timestamp for ApproximateTimeSynchronizer
+        self.image_pub.publish(img_msg)
 
         # Optional annotated image (for rviz / rqt_image_view debugging).
         if self.publish_annotated or self.view_image:

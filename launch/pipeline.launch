@@ -6,6 +6,15 @@
   <!-- Detector -->
   <arg name="detector_weights" default="$(find yolov10_ros)/models/yolov10-bdd-vanilla.pt" />
   <arg name="detector_conf" default="0.5" />
+  <arg name="publish_annotated" default="false" />
+  <arg name="view_image" default="false" />
+
+  <!-- Combined visualizer -->
+  <arg name="publish_combined" default="true" />
+
+  <!-- Lane segmentation (TwinLiteNet) -->
+  <arg name="lane_weights" default="$(find yolov10_ros)/models/twinlitenet_best.pth" />
+  <arg name="lane_seg" default="true" />
 
   <!-- Light classifier -->
   <arg name="light_weights" default="$(find yolov10_ros)/models/efficientnet_b0_20260211_195116_light_cls.pth" />
@@ -22,6 +31,8 @@
     <param name="confidence_threshold" value="$(arg detector_conf)" />
     <param name="device" value="$(arg device)" />
     <param name="input_image_topic" value="$(arg input_image_topic)" />
+    <param name="publish_annotated" value="$(arg publish_annotated)" />
+    <param name="view_image" value="$(arg view_image)" />
   </node>
 
   <!-- Light classifier node -->
@@ -45,4 +56,16 @@
     <rosparam file="$(find yolov10_ros)/config/speed_limit_ocr_params.yaml" />
     <param name="device" value="$(arg device)" />
   </node>
+
+  <!-- Lane segmentation node (TwinLiteNet) -->
+  <node if="$(arg lane_seg)" pkg="yolov10_ros" name="lane_seg"
+        type="lane_seg_node.py" output="screen">
+    <rosparam file="$(find yolov10_ros)/config/lane_seg_params.yaml" />
+    <param name="weights" value="$(arg lane_weights)" />
+    <param name="device"  value="$(arg device)" />
+  </node>
+
+  <!-- Combined perception visualizer — publishes /perception/annotated -->
+  <node if="$(arg publish_combined)" pkg="yolov10_ros" name="perception_viz"
+        type="perception_viz_node.py" output="screen" />
 </launch>

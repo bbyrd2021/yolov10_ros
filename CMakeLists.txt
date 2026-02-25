@@ -43,5 +43,7 @@ catkin_install_python(PROGRAMS
   src/light_classifier_node.py
   src/sign_classifier_node.py
   src/speed_limit_ocr_node.py
+  src/perception_viz_node.py
+  src/lane_seg_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

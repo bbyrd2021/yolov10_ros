@@ -1,0 +1,13 @@
+# lane_seg_params.yaml
+# ---------------------
+# Parameters for lane_seg_node.py (TwinLiteNet drivable area + lane segmentation).
+#
+# weights is intentionally left blank here — it is resolved via $(find yolov10_ros)
+# in pipeline.launch so the path is always correct regardless of install location.
+
+# Input topic — uses the decoded frame already published by the detector node.
+image_topic: /yolov10/image_raw
+
+# Output topics consumed by perception_viz_node and the autonomy stack.
+drivable_area_topic: /perception/drivable_area
+lane_lines_topic:    /perception/lane_lines
